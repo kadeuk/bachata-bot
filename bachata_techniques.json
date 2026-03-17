@@ -1,0 +1,155 @@
+[
+  {
+    "id": 1,
+    "spanish_pronunciation": "온다",
+    "spanish_name": "Onda",
+    "english_korean_pronunciation": "프론트 웨이브 / 바디롤",
+    "english_equivalent": "Front Wave / Body Roll",
+    "meaning": "'파도'라는 뜻. 가장 기본적인 앞뒤 웨이브.",
+    "priority": 1
+  },
+  {
+    "id": 2,
+    "spanish_pronunciation": "온다 라떼랄",
+    "spanish_name": "Onda Lateral",
+    "english_korean_pronunciation": "사이드 웨이브",
+    "english_equivalent": "Side Wave",
+    "meaning": "옆 방향(사이드)으로 진행하는 웨이브.",
+    "priority": 1
+  },
+  {
+    "id": 3,
+    "spanish_pronunciation": "까이다",
+    "spanish_name": "Caída",
+    "english_korean_pronunciation": "딥",
+    "english_equivalent": "Dip",
+    "meaning": "'떨어지다'라는 뜻. 골반 리드를 통해 여자를 뒤로 눕히는 동작.",
+    "priority": 1
+  },
+  {
+    "id": 4,
+    "spanish_pronunciation": "볼레로",
+    "spanish_name": "Bolero",
+    "english_korean_pronunciation": "프레퍼레이션",
+    "english_equivalent": "Preparation",
+    "meaning": "호흡을 마시며 에너지를 위로 끌어올려 다음 무브를 준비하는 동작.",
+    "priority": 1
+  },
+  {
+    "id": 17,
+    "spanish_pronunciation": "볼레로",
+    "spanish_name": "Bolero",
+    "english_korean_pronunciation": "업",
+    "english_equivalent": "Up",
+    "meaning": "호흡을 마시며 에너지를 위로 끌어올려 다음 무브를 준비하는 동작.",
+    "priority": 1
+  },
+  {
+    "id": 5,
+    "spanish_pronunciation": "꼼플레또",
+    "spanish_name": "Completo",
+    "english_korean_pronunciation": "쓰리식스티 턴 / 풀 턴",
+    "english_equivalent": "360 Degree Turn / Full Turn",
+    "meaning": "남녀가 프레임을 유지한 상태로 축을 두고 360도 도는 동작.",
+    "priority": 1
+  },
+  {
+    "id": 6,
+    "spanish_pronunciation": "빠쎄알라",
+    "spanish_name": "Paséala",
+    "english_korean_pronunciation": "워킹 / 체인지 디렉션",
+    "english_equivalent": "Walking / Change Direction",
+    "meaning": "여자가 남자 앞으로 걸어가 방향을 바꾸며 포지션을 전환하는 동작.",
+    "priority": 1
+  },
+  {
+    "id": 7,
+    "spanish_pronunciation": "롬뽀 델란떼",
+    "spanish_name": "Rompo Delante",
+    "english_korean_pronunciation": "브레이크 포워드 / 전진 스텝",
+    "english_equivalent": "Break Forward",
+    "meaning": "베이직을 깨고 패턴의 시작점이 되는 전진 스텝.",
+    "priority": 1
+  },
+  {
+    "id": 8,
+    "spanish_pronunciation": "삔싸",
+    "spanish_name": "Pinza",
+    "english_korean_pronunciation": "하체 블록 상체 롤 / 사이드 바디 롤",
+    "english_equivalent": "Pinza",
+    "meaning": "여자의 하체를 고정(블록)하고 상체만 사이드로 롤링시키는 동작.",
+    "priority": 1
+  },
+  {
+    "id": 9,
+    "spanish_pronunciation": "꿀리또",
+    "spanish_name": "Culito",
+    "english_korean_pronunciation": "힙롤",
+    "english_equivalent": "Hip Roll",
+    "meaning": "상하체를 고정하고 골반 아이솔레이션만으로 작게 돌리는 기본 힙롤.",
+    "priority": 1
+  },
+  {
+    "id": 10,
+    "spanish_pronunciation": "꼰뜨라 까데라",
+    "spanish_name": "Contra Cadera",
+    "english_korean_pronunciation": "리버스 힙롤 / 콘트라",
+    "english_equivalent": "Reverse Hip Roll",
+    "meaning": "힙롤 진행 중 중간에 막아서 반대 방향으로 되돌리는 동작.",
+    "priority": 1
+  },
+  {
+    "id": 11,
+    "spanish_pronunciation": "란싸미엔또 데 라 까데라",
+    "spanish_name": "Lanzamiento de la Cadera",
+    "english_korean_pronunciation": "힙 쓰로우",
+    "english_equivalent": "Hip Throw",
+    "meaning": "카운터 발란스를 잡고 여자의 힙을 크게 돌리는 던지기 동작.",
+    "priority": 1
+  },
+  {
+    "id": 12,
+    "spanish_pronunciation": "라떼랄",
+    "spanish_name": "Lateral",
+    "english_korean_pronunciation": "인피니티 / 피겨 에잇",
+    "english_equivalent": "Infinity / Figure 8",
+    "meaning": "골반으로 8자를 그리는 인피니티 무브 (샤키라 무브).",
+    "priority": 1
+  },
+  {
+    "id": 13,
+    "spanish_pronunciation": "까베싸",
+    "spanish_name": "Cabeza",
+    "english_korean_pronunciation": "헤드롤",
+    "english_equivalent": "Head Roll",
+    "meaning": "무게 중심 이동으로 여자 상체를 리드해 머리가 자연스럽게 돌아가게 하는 동작.",
+    "priority": 1
+  },
+  {
+    "id": 14,
+    "spanish_pronunciation": "골뻬",
+    "spanish_name": "Golpes",
+    "english_korean_pronunciation": "스타카토 / 아이솔레이션 / 각기",
+    "english_equivalent": "Staccato / Isolation",
+    "meaning": "동작을 딱딱 끊어치는 아이솔레이션 무브.",
+    "priority": 1
+  },
+  {
+    "id": 15,
+    "spanish_pronunciation": "메디아",
+    "spanish_name": "Media",
+    "english_korean_pronunciation": "하프턴",
+    "english_equivalent": "Half Turn",
+    "meaning": "여자를 하프턴(반 바퀴)시켜 쉐도우 포지션을 만드는 동작.",
+    "priority": 1
+  },
+  {
+    "id": 16,
+    "spanish_pronunciation": "임뿔쏘",
+    "spanish_name": "Impulso",
+    "english_korean_pronunciation": "임펄스 / 푸시",
+    "english_equivalent": "Impulse / Push",
+    "meaning": "카운터 발란스를 이용해 여자를 라떼랄(옆) 방향으로 밀어내는 동작.",
+    "priority": 1
+  }
+]
