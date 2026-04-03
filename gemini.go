@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/generative-ai-go/genai"
@@ -115,4 +116,49 @@ func (gc *GeminiClient) CountTokens(text string) (int, error) {
 		return 0, err
 	}
 	return int(resp.TotalTokens), nil
+}
+
+// PostProcessNumbers uses AI to convert remaining Korean numbers to Arabic numbers
+// This is a context-aware post-processing step after sequence-based conversion
+func (gc *GeminiClient) PostProcessNumbers(content string) (string, error) {
+	prompt := `당신은 한국어 자막의 숫자 표기를 교정하는 전문가입니다.
+
+**임무:**
+SRT 자막에서 한국어로 표기된 숫자(원, 투, 쓰리, 포, 파, 식, 세븐, 에잇 등)를 문맥을 보고 아라비아 숫자로 변환하세요.
+
+**중요한 규칙:**
+1. **타임코드는 절대 변경하지 마세요** - 원본 그대로 유지
+2. **자막 번호는 절대 변경하지 마세요** - 원본 그대로 유지
+3. **SRT 형식을 정확히 유지하세요** (번호, 타임코드, 텍스트, 빈 줄)
+4. **문맥을 보고 판단하세요:**
+   - 카운트/숫자인 경우: 변환 (예: "원 투 쓰리" → "1 2 3", "세븐에잇" → "7 8")
+   - 일반 단어의 일부인 경우: 변환 안 함 (예: "어떤 식으로" → "어떤 식으로", "익스텐션" → "익스텐션")
+
+**변환 예시:**
+- "원 투 쓰리 포" → "1 2 3 4" (카운트)
+- "세븐에잇에" → "7 8에" (카운트)
+- "파 식 세븐 에잇" → "5 6 7 8" (카운트)
+- "어떤 식으로" → "어떤 식으로" (일반 단어, 변환 안 함)
+- "익스텐션" → "익스텐션" (일반 단어, 변환 안 함)
+- "6에 왼쪽을" → "6에 왼쪽을" (이미 숫자, 유지)
+
+**출력:**
+수정된 전체 SRT 파일을 출력하세요. 마크다운 코드 블록 없이 순수 SRT 형식만 출력하세요.
+
+**원본 SRT:**
+` + content
+
+	result, err := gc.GenerateContent(prompt)
+	if err != nil {
+		return content, fmt.Errorf("AI 숫자 후처리 실패: %v", err)
+	}
+
+	// Clean response
+	result = strings.TrimSpace(result)
+	result = strings.TrimPrefix(result, "```srt")
+	result = strings.TrimPrefix(result, "```")
+	result = strings.TrimSuffix(result, "```")
+	result = strings.TrimSpace(result)
+
+	return result, nil
 }

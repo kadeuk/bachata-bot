@@ -33,8 +33,8 @@ func NewNumberConverter() *NumberConverter {
 
 // ConvertNumbers converts Korean numbers to Arabic numbers in the text
 func (nc *NumberConverter) ConvertNumbers(text string) string {
-	// WHITELIST APPROACH: Only convert numbers that are standalone or followed by allowed particles
-	// This prevents "익스텐션" → "익스10션" by only converting "텐" when it's a standalone word
+	// STRATEGY: Only convert numbers when they appear in SEQUENCE (2+ consecutive numbers)
+	// This prevents "어떤 식으로" → "어떤 6으로" while allowing "파 식 세븐 에잇" → "5 6 7 8"
 	
 	// Define allowed Korean particles that can follow numbers
 	allowedParticles := []string{
@@ -46,33 +46,26 @@ func (nc *NumberConverter) ConvertNumbers(text string) string {
 	// Sort by length (longest first) to avoid partial replacements
 	orderedKeys := []string{
 		"파이브", "식스", "쓰리", "세븐", "에잇", "나인",
-		"원", "투", "포", "파", "퐈", "식", "텐", "앤",
+		"원", "투", "포", "파", "퐈", "식", "텐",
 	}
 	
 	// Split text into words (tokens)
 	words := strings.Fields(text)
 	
+	// STEP 1: Mark which words are numbers (or number+particle)
+	isNumber := make([]bool, len(words))
 	for i, word := range words {
-		// Try each number pattern (longest first)
 		for _, korean := range orderedKeys {
-			arabic, exists := nc.replacements[korean]
-			if !exists {
-				continue
-			}
-			
-			// Case 1: Word is EXACTLY the number (standalone)
-			// Example: "포" → "4"
 			if word == korean {
-				words[i] = arabic
+				isNumber[i] = true
 				break
 			}
 			
-			// Case 2: Word is [number] + [particle] + [optional punctuation]
-			// Example: "포에서," → "4에서," or "포!" → "4!"
+			// Check if word is number + particle
 			if strings.HasPrefix(word, korean) && len(word) > len(korean) {
 				remainder := word[len(korean):]
 				
-				// Strip trailing punctuation first to check particle
+				// Strip punctuation
 				punctuation := ""
 				cleanRemainder := remainder
 				for len(cleanRemainder) > 0 {
@@ -85,15 +78,88 @@ func (nc *NumberConverter) ConvertNumbers(text string) string {
 					}
 				}
 				
-				// Check if cleanRemainder is an allowed particle (or empty for punctuation-only)
-				isAllowedParticle := false
+				// Check if it's a valid number+particle combination
+				if cleanRemainder == "" && punctuation != "" {
+					isNumber[i] = true
+					break
+				}
+				for _, particle := range allowedParticles {
+					if cleanRemainder == particle {
+						isNumber[i] = true
+						break
+					}
+				}
+				if isNumber[i] {
+					break
+				}
+			}
+		}
+	}
+	
+	// STEP 2: Find sequences of 2+ consecutive numbers
+	sequences := []struct{ start, end int }{}
+	i := 0
+	for i < len(words) {
+		if isNumber[i] {
+			start := i
+			for i < len(words) && isNumber[i] {
+				i++
+			}
+			end := i
+			// Only mark as sequence if 2+ numbers
+			if end-start >= 2 {
+				sequences = append(sequences, struct{ start, end int }{start, end})
+			}
+		} else {
+			i++
+		}
+	}
+	
+	// STEP 3: Convert only numbers in sequences
+	inSequence := make([]bool, len(words))
+	for _, seq := range sequences {
+		for i := seq.start; i < seq.end; i++ {
+			inSequence[i] = true
+		}
+	}
+	
+	// STEP 4: Apply conversion only to numbers in sequences
+	for i, word := range words {
+		if !inSequence[i] {
+			continue
+		}
+		
+		for _, korean := range orderedKeys {
+			arabic, exists := nc.replacements[korean]
+			if !exists {
+				continue
+			}
+			
+			if word == korean {
+				words[i] = arabic
+				break
+			}
+			
+			if strings.HasPrefix(word, korean) && len(word) > len(korean) {
+				remainder := word[len(korean):]
 				
-				// Allow if remainder is ONLY punctuation (e.g., "포!" → "4!")
+				// Strip punctuation
+				punctuation := ""
+				cleanRemainder := remainder
+				for len(cleanRemainder) > 0 {
+					lastChar := cleanRemainder[len(cleanRemainder)-1:]
+					if lastChar == "," || lastChar == "." || lastChar == "!" || lastChar == "?" {
+						punctuation = lastChar + punctuation
+						cleanRemainder = cleanRemainder[:len(cleanRemainder)-1]
+					} else {
+						break
+					}
+				}
+				
+				isAllowedParticle := false
 				if cleanRemainder == "" && punctuation != "" {
 					isAllowedParticle = true
 				} else {
-					// Check if cleanRemainder EXACTLY matches an allowed particle
-					// CRITICAL: Must be exact match to prevent "에이스" (starts with "에") from passing
 					for _, particle := range allowedParticles {
 						if cleanRemainder == particle {
 							isAllowedParticle = true
@@ -102,12 +168,10 @@ func (nc *NumberConverter) ConvertNumbers(text string) string {
 					}
 				}
 				
-				// Only convert if followed by allowed particle (or punctuation only)
 				if isAllowedParticle {
 					words[i] = arabic + remainder
 					break
 				}
-				// Otherwise SKIP (e.g., "포인트" has "인트" which is not allowed)
 			}
 		}
 	}

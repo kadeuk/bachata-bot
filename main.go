@@ -288,9 +288,17 @@ func continueProcessingAfterFilename(s *discordgo.Session, session *Session) {
 			log.Printf("✅ 타임코드 형식 수정 완료 (YouTube 호환)")
 		}
 		
-		// CRITICAL: Convert Korean numbers to Arabic numbers BEFORE AI processing
+		// STEP 1: Convert Korean numbers to Arabic numbers (sequence-based: 2+ consecutive only)
 		cleanedContent = numberConverter.ConvertNumbersInContent(cleanedContent)
-		log.Printf("✅ 숫자 변환 완료 (한글 → 아라비아 숫자)")
+		log.Printf("✅ 1단계 숫자 변환 완료 (연속된 숫자만)")
+		
+		// STEP 2: AI post-processing for remaining numbers (context-aware)
+		cleanedContent, err = geminiClient.PostProcessNumbers(cleanedContent)
+		if err != nil {
+			log.Printf("⚠️ AI 숫자 후처리 실패: %v (1단계 결과 사용)", err)
+		} else {
+			log.Printf("✅ 2단계 AI 숫자 후처리 완료 (문맥 기반)")
+		}
 		
 		log.Printf("✅ 텍스트 정리 완료")
 	}()
