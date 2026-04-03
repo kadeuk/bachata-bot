@@ -30,6 +30,10 @@ var (
 	corrector         *Corrector
 	parallelProcessor *ParallelProcessor
 	glossaryMgr       *GlossaryManager
+	
+	// Build-time variables (injected via -ldflags)
+	DiscordToken string
+	GeminiAPIKey string
 )
 
 func main() {
@@ -46,20 +50,31 @@ func main() {
 		return
 	}
 
-	// Load environment variables
-	if err := godotenv.Load(); err != nil {
-		log.Println("⚠️ .env 파일을 찾을 수 없습니다.")
+	// Get API keys from build-time variables or environment variables
+	discordToken := DiscordToken
+	geminiAPIKey := GeminiAPIKey
+	
+	// Fallback to environment variables if build-time variables are empty
+	if discordToken == "" {
+		if err := godotenv.Load(); err != nil {
+			log.Println("⚠️ .env 파일을 찾을 수 없습니다.")
+		}
+		discordToken = os.Getenv("DISCORD_TOKEN")
+	}
+	
+	if geminiAPIKey == "" {
+		if err := godotenv.Load(); err != nil {
+			log.Println("⚠️ .env 파일을 찾을 수 없습니다.")
+		}
+		geminiAPIKey = os.Getenv("GEMINI_API_KEY")
 	}
 
-	discordToken := os.Getenv("DISCORD_TOKEN")
-	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
-
 	if discordToken == "" {
-		log.Fatal("❌ DISCORD_TOKEN 환경 변수가 설정되지 않았습니다.")
+		log.Fatal("❌ DISCORD_TOKEN이 설정되지 않았습니다. GitHub Secrets 또는 .env 파일을 확인하세요.")
 	}
 
 	if geminiAPIKey == "" {
-		log.Fatal("❌ GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.")
+		log.Fatal("❌ GEMINI_API_KEY가 설정되지 않았습니다. GitHub Secrets 또는 .env 파일을 확인하세요.")
 	}
 
 	// Initialize components

@@ -25,25 +25,25 @@ jobs:
 
       - name: Build for Windows (amd64)
         run: |
-          GOOS=windows GOARCH=amd64 go build -o bachata-bot-windows-amd64.exe
+          GOOS=windows GOARCH=amd64 go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.GeminiAPIKey=${{ secrets.GEMINI_API_KEY }}" -o bachata-bot-windows-amd64.exe
         env:
           CGO_ENABLED: 0
 
       - name: Build for macOS (arm64 - Apple Silicon)
         run: |
-          GOOS=darwin GOARCH=arm64 go build -o bachata-bot-macos-arm64
+          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.GeminiAPIKey=${{ secrets.GEMINI_API_KEY }}" -o bachata-bot-macos-arm64
         env:
           CGO_ENABLED: 0
 
       - name: Build for macOS (amd64 - Intel)
         run: |
-          GOOS=darwin GOARCH=amd64 go build -o bachata-bot-macos-amd64
+          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.GeminiAPIKey=${{ secrets.GEMINI_API_KEY }}" -o bachata-bot-macos-amd64
         env:
           CGO_ENABLED: 0
 
       - name: Build for Linux (amd64)
         run: |
-          GOOS=linux GOARCH=amd64 go build -o bachata-bot-linux-amd64
+          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.GeminiAPIKey=${{ secrets.GEMINI_API_KEY }}" -o bachata-bot-linux-amd64
         env:
           CGO_ENABLED: 0
 
