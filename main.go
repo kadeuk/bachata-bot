@@ -412,13 +412,19 @@ func handleTermCheckResponse(s *discordgo.Session, m *discordgo.MessageCreate, s
 	if replacement != term.OriginalTerm {
 		session.Glossary[term.OriginalTerm] = replacement
 		
-		// Auto-update correction glossary for future sessions
-		if glossaryMgr != nil {
+		// CRITICAL FIX: Only add to global glossary if it's a single word (no spaces)
+		// This prevents context-dependent phrases from being auto-applied everywhere
+		// Examples:
+		// - ALLOW: "팔로" → "팔로워" (single word, technical term)
+		// - BLOCK: "튈 거예요" → "돌릴 거에요" (phrase with spaces, context-dependent)
+		if glossaryMgr != nil && !strings.Contains(term.OriginalTerm, " ") && !strings.Contains(replacement, " ") {
 			if err := glossaryMgr.AddCorrectionTerm(term.OriginalTerm, replacement); err != nil {
 				log.Printf("⚠️ 교정 용어집 업데이트 실패: %v", err)
 			} else {
-				log.Printf("📝 교정 용어집 추가: [%s] → [%s]", term.OriginalTerm, replacement)
+				log.Printf("📝 교정 용어집 추가 (단일 단어): [%s] → [%s]", term.OriginalTerm, replacement)
 			}
+		} else if strings.Contains(term.OriginalTerm, " ") || strings.Contains(replacement, " ") {
+			log.Printf("⏭️ 교정 용어집 제외 (구절/문맥 의존): [%s] → [%s] (1회성 적용만)", term.OriginalTerm, replacement)
 		}
 		
 		// Log batch replacement

@@ -148,15 +148,38 @@ func (gm *GlossaryManager) GetMiniCorrectionGlossary(text string) map[string]str
 	mini := make(map[string]string)
 	textLower := strings.ToLower(text)
 
+	// CRITICAL FIX: Sort by length (longest first) to prevent substring duplication
+	// Example: "팔로" → "팔로워" should be processed BEFORE any shorter terms
+	// This prevents "팔로워" from becoming "팔로워워" if "팔로" is replaced first
+	type termPair struct {
+		original  string
+		corrected string
+	}
+	
+	var sortedTerms []termPair
 	for original, corrected := range gm.correctionGloss {
 		// Check if the original term appears in the text
 		if strings.Contains(textLower, strings.ToLower(original)) {
-			mini[original] = corrected
+			sortedTerms = append(sortedTerms, termPair{original, corrected})
 		}
+	}
+	
+	// Sort by length (longest first)
+	for i := 0; i < len(sortedTerms); i++ {
+		for j := i + 1; j < len(sortedTerms); j++ {
+			if len(sortedTerms[j].original) > len(sortedTerms[i].original) {
+				sortedTerms[i], sortedTerms[j] = sortedTerms[j], sortedTerms[i]
+			}
+		}
+	}
+	
+	// Add to mini glossary in sorted order
+	for _, term := range sortedTerms {
+		mini[term.original] = term.corrected
 	}
 
 	if len(mini) > 0 {
-		log.Printf("🔍 교정 용어집 필터링: %d개 → %d개 (토큰 절약)", len(gm.correctionGloss), len(mini))
+		log.Printf("🔍 교정 용어집 필터링: %d개 → %d개 (토큰 절약, 길이순 정렬)", len(gm.correctionGloss), len(mini))
 	}
 
 	return mini
