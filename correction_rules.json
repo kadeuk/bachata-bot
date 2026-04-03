@@ -1,0 +1,63 @@
+{
+  "rules": [
+    {
+      "id": "number_format",
+      "priority": 1,
+      "description": "모든 숫자는 아라비아 숫자로 표기 (콤마 없이 띄어쓰기만)",
+      "examples": [
+        "원 → 1",
+        "투 → 2",
+        "쓰리/스리 → 3",
+        "포 → 4",
+        "파이브/파/퐈 → 5",
+        "식스/식 → 6",
+        "세븐 → 7",
+        "에잇 → 8",
+        "원 투 쓰리 포 → 1 2 3 4",
+        "원투쓰리포 → 1 2 3 4"
+      ],
+      "strict": true
+    },
+    {
+      "id": "readability",
+      "priority": 2,
+      "description": "가독성을 위해 문맥에 맞게 띄어쓰기 조정 (콤마 사용 금지)",
+      "examples": [
+        "1 2 3 4 5 6에",
+        "1 2 3 4"
+      ],
+      "strict": false
+    },
+    {
+      "id": "dance_terms",
+      "priority": 3,
+      "description": "바차타 용어는 bachata_techniques.json 참조",
+      "strict": true
+    },
+    {
+      "id": "spacing",
+      "priority": 4,
+      "description": "숫자와 한글 사이 띄어쓰기",
+      "examples": [
+        "1에",
+        "6에서",
+        "1 2 3 4에"
+      ],
+      "strict": true
+    }
+  ],
+  "number_mappings": {
+    "원": "1",
+    "투": "2",
+    "쓰리": "3",
+    "포": "4",
+    "파이브": "5",
+    "파": "5",
+    "식스": "6",
+    "식": "6",
+    "세븐": "7",
+    "에잇": "8",
+    "나인": "9",
+    "텐": "10"
+  }
+}

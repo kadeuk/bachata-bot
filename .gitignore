@@ -14,3 +14,10 @@ backup/
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Downloaded/extracted files
+bachata-bot-*
+!bachata-bot*.exe
+
+# Output directories
+2026-*/
