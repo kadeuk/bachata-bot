@@ -404,28 +404,52 @@ func handleTermCheckResponse(s *discordgo.Session, m *discordgo.MessageCreate, s
 		log.Printf("✏️ 사용자 입력: [%s] → [%s]", term.OriginalTerm, replacement)
 	}
 
-	// Apply replacement
+	// BATCH REPLACEMENT: Replace ALL occurrences at once
+	originalCount := strings.Count(session.CorrectedKorean, term.OriginalTerm)
 	session.CorrectedKorean = strings.ReplaceAll(session.CorrectedKorean, term.OriginalTerm, replacement)
 	
 	// Add to glossary if changed
 	if replacement != term.OriginalTerm {
 		session.Glossary[term.OriginalTerm] = replacement
 		
-		// Auto-update correction glossary
+		// Auto-update correction glossary for future sessions
 		if glossaryMgr != nil {
 			if err := glossaryMgr.AddCorrectionTerm(term.OriginalTerm, replacement); err != nil {
 				log.Printf("⚠️ 교정 용어집 업데이트 실패: %v", err)
+			} else {
+				log.Printf("📝 교정 용어집 추가: [%s] → [%s]", term.OriginalTerm, replacement)
 			}
+		}
+		
+		// Log batch replacement
+		if originalCount > 1 {
+			log.Printf("🔄 일괄 교정: [%s] → [%s] (총 %d건)", term.OriginalTerm, replacement, originalCount)
 		}
 	}
 
-	// Move to next term
-	if session.NextTerm() {
-		askNextTerm(s, session)
-	} else {
-		// All terms checked, proceed to final review
-		proceedToFinalReview(s, session)
+	// Skip remaining identical terms
+	skippedCount := 0
+	for session.NextTerm() {
+		nextTerm := session.GetCurrentTerm()
+		if nextTerm != nil && nextTerm.OriginalTerm == term.OriginalTerm {
+			// Same term, skip it
+			skippedCount++
+			log.Printf("⏭️ 동일 용어 건너뛰기: [%s] (이미 처리됨)", nextTerm.OriginalTerm)
+		} else {
+			// Different term, ask user
+			if skippedCount > 0 {
+				s.ChannelMessageSend(session.ChannelID, fmt.Sprintf("✅ [%s → %s] 총 %d건 일괄 적용 완료", term.OriginalTerm, replacement, originalCount))
+			}
+			askNextTerm(s, session)
+			return
+		}
 	}
+	
+	// All terms checked, proceed to final review
+	if skippedCount > 0 {
+		s.ChannelMessageSend(session.ChannelID, fmt.Sprintf("✅ [%s → %s] 총 %d건 일괄 적용 완료", term.OriginalTerm, replacement, originalCount))
+	}
+	proceedToFinalReview(s, session)
 }
 
 func handleCorrectionResponse(s *discordgo.Session, m *discordgo.MessageCreate, session *Session) {
