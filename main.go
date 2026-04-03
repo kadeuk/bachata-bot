@@ -30,6 +30,8 @@ var (
 	corrector         *Corrector
 	parallelProcessor *ParallelProcessor
 	glossaryMgr       *GlossaryManager
+	numberConverter   *NumberConverter
+	spellingCorrector *SpellingCorrector
 	
 	// Build-time variables (injected via -ldflags)
 	DiscordToken string
@@ -104,7 +106,10 @@ func main() {
 	textCleaner = NewTextCleaner()
 	corrector = NewCorrector(geminiClient, techniquesMgr, glossaryMgr)
 	parallelProcessor = NewParallelProcessor(3) // 최대 3개 청크 동시 처리
+	numberConverter = NewNumberConverter()
+	spellingCorrector = NewSpellingCorrector()
 	log.Println("✅ 번역기 초기화 완료")
+	log.Println("✅ 숫자 변환기 및 맞춤법 교정기 초기화 완료")
 
 	// Create Discord session
 	dg, err := discordgo.New("Bot " + discordToken)
@@ -282,6 +287,10 @@ func continueProcessingAfterFilename(s *discordgo.Session, session *Session) {
 			cleanedContent = fixedContent
 			log.Printf("✅ 타임코드 형식 수정 완료 (YouTube 호환)")
 		}
+		
+		// CRITICAL: Convert Korean numbers to Arabic numbers BEFORE AI processing
+		cleanedContent = numberConverter.ConvertNumbersInContent(cleanedContent)
+		log.Printf("✅ 숫자 변환 완료 (한글 → 아라비아 숫자)")
 		
 		log.Printf("✅ 텍스트 정리 완료")
 	}()
