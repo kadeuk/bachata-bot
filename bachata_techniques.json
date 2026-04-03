@@ -3,8 +3,8 @@
     "id": 1,
     "spanish_pronunciation": "온다",
     "spanish_name": "Onda",
-    "english_korean_pronunciation": "프론트 웨이브 / 바디롤",
-    "english_equivalent": "Front Wave / Body Roll",
+    "english_korean_pronunciation": "프론트 웨이브",
+    "english_equivalent": "Front Wave",
     "meaning": "'파도'라는 뜻. 가장 기본적인 앞뒤 웨이브.",
     "priority": 1
   },
@@ -45,11 +45,29 @@
     "priority": 1
   },
   {
+    "id": 18,
+    "spanish_pronunciation": "하우",
+    "spanish_name": "Rau",
+    "english_korean_pronunciation": "하우",
+    "english_equivalent": "Rau",
+    "meaning": "브라질 슬랭. 토하듯이 하는 동작을 표현하는 용어.",
+    "priority": 2
+  },
+  {
+    "id": 19,
+    "spanish_pronunciation": "프렙턴",
+    "spanish_name": "Prep Turn",
+    "english_korean_pronunciation": "준비턴",
+    "english_equivalent": "Preparation Turn",
+    "meaning": "Preparation(준비)의 Prep과 Turn이 합쳐진 용어. 턴을 준비하는 동작.",
+    "priority": 1
+  },
+  {
     "id": 5,
     "spanish_pronunciation": "꼼플레또",
     "spanish_name": "Completo",
-    "english_korean_pronunciation": "쓰리식스티 턴 / 풀 턴",
-    "english_equivalent": "360 Degree Turn / Full Turn",
+    "english_korean_pronunciation": "",
+    "english_equivalent": "",
     "meaning": "남녀가 프레임을 유지한 상태로 축을 두고 360도 도는 동작.",
     "priority": 1
   },
@@ -57,8 +75,8 @@
     "id": 6,
     "spanish_pronunciation": "빠쎄알라",
     "spanish_name": "Paséala",
-    "english_korean_pronunciation": "워킹 / 체인지 디렉션",
-    "english_equivalent": "Walking / Change Direction",
+    "english_korean_pronunciation": "",
+    "english_equivalent": "",
     "meaning": "여자가 남자 앞으로 걸어가 방향을 바꾸며 포지션을 전환하는 동작.",
     "priority": 1
   },
@@ -66,7 +84,7 @@
     "id": 7,
     "spanish_pronunciation": "롬뽀 델란떼",
     "spanish_name": "Rompo Delante",
-    "english_korean_pronunciation": "브레이크 포워드 / 전진 스텝",
+    "english_korean_pronunciation": "브레이크 포워드",
     "english_equivalent": "Break Forward",
     "meaning": "베이직을 깨고 패턴의 시작점이 되는 전진 스텝.",
     "priority": 1
@@ -75,7 +93,7 @@
     "id": 8,
     "spanish_pronunciation": "삔싸",
     "spanish_name": "Pinza",
-    "english_korean_pronunciation": "하체 블록 상체 롤 / 사이드 바디 롤",
+    "english_korean_pronunciation": "삔싸",
     "english_equivalent": "Pinza",
     "meaning": "여자의 하체를 고정(블록)하고 상체만 사이드로 롤링시키는 동작.",
     "priority": 1
@@ -93,7 +111,7 @@
     "id": 10,
     "spanish_pronunciation": "꼰뜨라 까데라",
     "spanish_name": "Contra Cadera",
-    "english_korean_pronunciation": "리버스 힙롤 / 콘트라",
+    "english_korean_pronunciation": "리버스 힙롤",
     "english_equivalent": "Reverse Hip Roll",
     "meaning": "힙롤 진행 중 중간에 막아서 반대 방향으로 되돌리는 동작.",
     "priority": 1
@@ -111,8 +129,8 @@
     "id": 12,
     "spanish_pronunciation": "라떼랄",
     "spanish_name": "Lateral",
-    "english_korean_pronunciation": "인피니티 / 피겨 에잇",
-    "english_equivalent": "Infinity / Figure 8",
+    "english_korean_pronunciation": "인피니티",
+    "english_equivalent": "Infinity",
     "meaning": "골반으로 8자를 그리는 인피니티 무브 (샤키라 무브).",
     "priority": 1
   },
@@ -129,8 +147,8 @@
     "id": 14,
     "spanish_pronunciation": "골뻬",
     "spanish_name": "Golpes",
-    "english_korean_pronunciation": "스타카토 / 아이솔레이션 / 각기",
-    "english_equivalent": "Staccato / Isolation",
+    "english_korean_pronunciation": "각기",
+    "english_equivalent": "Staccato ",
     "meaning": "동작을 딱딱 끊어치는 아이솔레이션 무브.",
     "priority": 1
   },
@@ -147,8 +165,8 @@
     "id": 16,
     "spanish_pronunciation": "임뿔쏘",
     "spanish_name": "Impulso",
-    "english_korean_pronunciation": "임펄스 / 푸시",
-    "english_equivalent": "Impulse / Push",
+    "english_korean_pronunciation": "임뿔쏘",
+    "english_equivalent": "Impulse",
     "meaning": "카운터 발란스를 이용해 여자를 라떼랄(옆) 방향으로 밀어내는 동작.",
     "priority": 1
   }

@@ -1,0 +1,16 @@
+# Environment variables with sensitive data
+.env
+
+# Compiled executables
+*.exe
+
+# Debug logs
+debug_logs/
+
+# Backup files
+backup/
+*.backup
+
+# OS specific files
+.DS_Store
+Thumbs.db
