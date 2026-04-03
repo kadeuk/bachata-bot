@@ -47,6 +47,30 @@ jobs:
         env:
           CGO_ENABLED: 0
 
+      - name: Package JSON files with binaries
+        run: |
+          # Create directories for each platform
+          mkdir -p release/windows release/macos-arm64 release/macos-amd64 release/linux
+          
+          # Copy binaries
+          cp bachata-bot-windows-amd64.exe release/windows/
+          cp bachata-bot-macos-arm64 release/macos-arm64/
+          cp bachata-bot-macos-amd64 release/macos-amd64/
+          cp bachata-bot-linux-amd64 release/linux/
+          
+          # Copy JSON files to each platform directory
+          for dir in release/*/; do
+            cp bachata_techniques.json "$dir"
+            cp correction_glossary.json "$dir"
+            cp translation_glossary.json "$dir"
+          done
+          
+          # Create zip archives
+          cd release/windows && zip -r ../../bachata-bot-windows-amd64.zip . && cd ../..
+          cd release/macos-arm64 && zip -r ../../bachata-bot-macos-arm64.zip . && cd ../..
+          cd release/macos-amd64 && zip -r ../../bachata-bot-macos-amd64.zip . && cd ../..
+          cd release/linux && zip -r ../../bachata-bot-linux-amd64.zip . && cd ../..
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -58,42 +82,42 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Upload Windows Binary
+      - name: Upload Windows Package
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./bachata-bot-windows-amd64.exe
-          asset_name: bachata-bot-windows-amd64.exe
-          asset_content_type: application/octet-stream
+          asset_path: ./bachata-bot-windows-amd64.zip
+          asset_name: bachata-bot-windows-amd64.zip
+          asset_content_type: application/zip
 
-      - name: Upload macOS ARM64 Binary
+      - name: Upload macOS ARM64 Package
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./bachata-bot-macos-arm64
-          asset_name: bachata-bot-macos-arm64
-          asset_content_type: application/octet-stream
+          asset_path: ./bachata-bot-macos-arm64.zip
+          asset_name: bachata-bot-macos-arm64.zip
+          asset_content_type: application/zip
 
-      - name: Upload macOS AMD64 Binary
+      - name: Upload macOS AMD64 Package
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./bachata-bot-macos-amd64
-          asset_name: bachata-bot-macos-amd64
-          asset_content_type: application/octet-stream
+          asset_path: ./bachata-bot-macos-amd64.zip
+          asset_name: bachata-bot-macos-amd64.zip
+          asset_content_type: application/zip
 
-      - name: Upload Linux Binary
+      - name: Upload Linux Package
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./bachata-bot-linux-amd64
-          asset_name: bachata-bot-linux-amd64
-          asset_content_type: application/octet-stream
+          asset_path: ./bachata-bot-linux-amd64.zip
+          asset_name: bachata-bot-linux-amd64.zip
+          asset_content_type: application/zip
