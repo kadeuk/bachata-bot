@@ -31,7 +31,7 @@ func NewTranslator(gemini *GeminiClient, techniques *TechniqueManager, glossary 
 
 // CorrectKoreanSRT corrects Korean STT errors
 func (t *Translator) CorrectKoreanSRT(content string, progressCallback func(current, total int)) (string, error) {
-	log.Println("📝 한국어 자막 교정 시작... (Gemini 1.5 Flash 사용)")
+	log.Println("📝 한국어 자막 교정 시작... (Gemini 2.5 Pro 사용)")
 
 	// Parse SRT
 	entries, err := ParseSRT(content)
@@ -46,7 +46,7 @@ func (t *Translator) CorrectKoreanSRT(content string, progressCallback func(curr
 	filteredTerms := t.techniques.GetFilteredTerms(content)
 	systemPrompt := t.techniques.BuildCorrectionPrompt(filteredTerms)
 
-	// Use Gemini 2.5 Pro (Flash not available in v1beta)
+	// Use Gemini 2.5 Pro
 	flashModel := t.gemini.client.GenerativeModel("gemini-2.5-pro")
 	flashModel.SetTemperature(0.2)
 	flashModel.SetTopK(40)
@@ -63,7 +63,31 @@ func (t *Translator) CorrectKoreanSRT(content string, progressCallback func(curr
 	// Process chunks in parallel
 	mergedEntries, err := t.parallelProcessor.ProcessChunksParallel(chunks, func(chunk []SRTEntry, index int) ([]SRTEntry, error) {
 		chunkText := GetChunkText(chunk)
-		userPrompt := fmt.Sprintf("아래 SRT 자막을 교정하세요. **중요: 모든 자막 항목을 빠짐없이 출력하세요**\n\n%s", chunkText)
+		
+		// CRITICAL: More explicit prompt with entry count and structure requirements
+		userPrompt := fmt.Sprintf(`아래 한국어 SRT 자막을 교정하세요.
+
+**절대적으로 지켜야 할 규칙:**
+1. **자막 항목 개수: 정확히 %d개를 유지하세요** (절대 추가/삭제 금지)
+2. **자막 번호: %d번부터 %d번까지 순차적으로 유지**
+3. **타임코드: 원본과 100%% 동일하게 유지** (HH:MM:SS,mmm --> HH:MM:SS,mmm 형식, 앞에 0 붙이기)
+4. **텍스트만 교정**하고 나머지는 그대로 유지
+5. **모든 항목을 빠짐없이 출력**하세요 (첫 번째부터 마지막까지 전부)
+6. SRT 형식을 정확히 지켜주세요:
+   - 번호
+   - 타임코드 (반드시 00:00:00,000 형식, 1:01:01이 아닌 01:01:01)
+   - 교정된 텍스트
+   - 빈 줄
+
+**원본 SRT (%d개 항목):**
+%s
+
+**출력:** 교정된 전체 SRT (%d개 항목, 마크다운 코드 블록 없이)`, 
+			len(chunk), 
+			chunk[0].Index, chunk[len(chunk)-1].Index,
+			len(chunk),
+			chunkText,
+			len(chunk))
 
 		// Retry logic with validation
 		maxRetries := 3
@@ -71,7 +95,6 @@ func (t *Translator) CorrectKoreanSRT(content string, progressCallback func(curr
 		var lastErr error
 
 		for attempt := 1; attempt <= maxRetries; attempt++ {
-			// Use Flash model instead of default Pro model
 			resp, err := flashModel.GenerateContent(t.gemini.ctx, genai.Text(userPrompt))
 			if err != nil {
 				lastErr = fmt.Errorf("API call failed: %v", err)
@@ -93,6 +116,7 @@ func (t *Translator) CorrectKoreanSRT(content string, progressCallback func(curr
 			if err != nil {
 				lastErr = fmt.Errorf("parse failed: %v", err)
 				log.Printf("⚠️ 청크 %d 파싱 실패 (시도 %d/%d): %v", index+1, attempt, maxRetries, err)
+				log.Printf("   응답 내용 (처음 500자): %s", response[:min(500, len(response))])
 				continue
 			}
 
@@ -100,17 +124,34 @@ func (t *Translator) CorrectKoreanSRT(content string, progressCallback func(curr
 			if err := ValidateTimecodes(chunk, correctedEntries); err != nil {
 				lastErr = err
 				log.Printf("⚠️ 청크 %d 검증 실패 (시도 %d/%d): %v", index+1, attempt, maxRetries, err)
+				log.Printf("   원본: %d개 항목 (%d~%d번)", len(chunk), chunk[0].Index, chunk[len(chunk)-1].Index)
+				log.Printf("   교정: %d개 항목", len(correctedEntries))
 
-				// If this is the last attempt, use original chunk
+				// If this is the last attempt, restore timecodes and use what we have
 				if attempt == maxRetries {
-					log.Printf("⚠️ 청크 %d: 최대 재시도 횟수 초과, 원본 사용", index+1)
-					correctedEntries = chunk
-					break
+					log.Printf("⚠️ 청크 %d: 최대 재시도 횟수 초과", index+1)
+					
+					// If entry count matches but timecodes are wrong, fix timecodes
+					if len(correctedEntries) == len(chunk) {
+						log.Printf("   → 항목 개수 일치, 타임코드만 복원")
+						for i := range correctedEntries {
+							correctedEntries[i].Index = chunk[i].Index
+							correctedEntries[i].StartTime = chunk[i].StartTime
+							correctedEntries[i].EndTime = chunk[i].EndTime
+						}
+						break
+					} else {
+						// Entry count mismatch - use original
+						log.Printf("   → 항목 개수 불일치, 원본 사용")
+						correctedEntries = chunk
+						break
+					}
 				}
 				continue
 			}
 
 			// Success!
+			log.Printf("   ✅ 청크 %d 검증 성공: %d개 항목", index+1, len(correctedEntries))
 			break
 		}
 
@@ -178,7 +219,31 @@ func (t *Translator) TranslateToLanguage(koreanSRT, targetLang, langName string,
 			Parts: []genai.Part{genai.Text(systemPrompt)},
 		}
 		
-		userPrompt := fmt.Sprintf("아래 한국어 SRT 자막을 번역하세요. **중요: 모든 자막 항목을 빠짐없이 출력하세요**\n\n%s", chunkText)
+		// CRITICAL: More explicit prompt with entry count and structure requirements
+		userPrompt := fmt.Sprintf(`아래 한국어 SRT 자막을 %s로 번역하세요.
+
+**절대적으로 지켜야 할 규칙:**
+1. **자막 항목 개수: 정확히 %d개를 유지하세요** (절대 추가/삭제 금지)
+2. **자막 번호: %d번부터 %d번까지 순차적으로 유지**
+3. **타임코드: 원본과 100%% 동일하게 유지** (HH:MM:SS,mmm --> HH:MM:SS,mmm 형식, 앞에 0 붙이기)
+4. **텍스트만 번역**하고 나머지는 그대로 유지
+5. **모든 항목을 빠짐없이 출력**하세요 (첫 번째부터 마지막까지 전부)
+6. SRT 형식을 정확히 지켜주세요:
+   - 번호
+   - 타임코드 (반드시 00:00:00,000 형식, 1:01:01이 아닌 01:01:01)
+   - 번역된 텍스트
+   - 빈 줄
+
+**원본 SRT (%d개 항목):**
+%s
+
+**출력:** 번역된 전체 SRT (%d개 항목, 마크다운 코드 블록 없이)`, 
+			langName, 
+			len(chunk), 
+			chunk[0].Index, chunk[len(chunk)-1].Index,
+			len(chunk),
+			chunkText,
+			len(chunk))
 
 		// Retry logic with validation
 		maxRetries := 3
@@ -219,6 +284,7 @@ func (t *Translator) TranslateToLanguage(koreanSRT, targetLang, langName string,
 			if err != nil {
 				lastErr = fmt.Errorf("parse failed: %v", err)
 				log.Printf("⚠️ 청크 %d 파싱 실패 (시도 %d/%d): %v", index+1, attempt, maxRetries, err)
+				log.Printf("   응답 내용 (처음 500자): %s", response[:min(500, len(response))])
 				continue
 			}
 
@@ -226,17 +292,34 @@ func (t *Translator) TranslateToLanguage(koreanSRT, targetLang, langName string,
 			if err := ValidateTimecodes(chunk, translatedEntries); err != nil {
 				lastErr = err
 				log.Printf("⚠️ 청크 %d 검증 실패 (시도 %d/%d): %v", index+1, attempt, maxRetries, err)
-
-				// If this is the last attempt, use original chunk
+				log.Printf("   원본: %d개 항목 (%d~%d번)", len(chunk), chunk[0].Index, chunk[len(chunk)-1].Index)
+				log.Printf("   번역: %d개 항목", len(translatedEntries))
+				
+				// If this is the last attempt, restore timecodes and use what we have
 				if attempt == maxRetries {
-					log.Printf("⚠️ 청크 %d: 최대 재시도 횟수 초과, 원본 사용", index+1)
-					translatedEntries = chunk
-					break
+					log.Printf("⚠️ 청크 %d: 최대 재시도 횟수 초과", index+1)
+					
+					// If entry count matches but timecodes are wrong, fix timecodes
+					if len(translatedEntries) == len(chunk) {
+						log.Printf("   → 항목 개수 일치, 타임코드만 복원")
+						for i := range translatedEntries {
+							translatedEntries[i].Index = chunk[i].Index
+							translatedEntries[i].StartTime = chunk[i].StartTime
+							translatedEntries[i].EndTime = chunk[i].EndTime
+						}
+						break
+					} else {
+						// Entry count mismatch - use original
+						log.Printf("   → 항목 개수 불일치, 원본 사용")
+						translatedEntries = chunk
+						break
+					}
 				}
 				continue
 			}
 
 			// Success!
+			log.Printf("   ✅ 청크 %d 검증 성공: %d개 항목", index+1, len(translatedEntries))
 			break
 		}
 
