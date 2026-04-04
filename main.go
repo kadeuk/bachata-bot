@@ -79,8 +79,20 @@ func main() {
 		log.Fatal("❌ GEMINI_API_KEY가 설정되지 않았습니다. GitHub Secrets 또는 .env 파일을 확인하세요.")
 	}
 
+	// Get executable directory for loading JSON files
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Fatalf("❌ 실행 경로를 찾을 수 없습니다: %v", err)
+	}
+	exeDir := filepath.Dir(exePath)
+	log.Printf("📂 실행 디렉토리: %s", exeDir)
+
+	// Build absolute paths for JSON files
+	techPath := filepath.Join(exeDir, "bachata_techniques.json")
+	correctionPath := filepath.Join(exeDir, "correction_glossary.json")
+	translationPath := filepath.Join(exeDir, "translation_glossary.json")
+
 	// Initialize components
-	var err error
 	geminiClient, err = NewGeminiClient(geminiAPIKey)
 	if err != nil {
 		log.Fatalf("❌ Gemini 클라이언트 초기화 실패: %v", err)
@@ -88,7 +100,7 @@ func main() {
 	defer geminiClient.Close()
 	log.Println("✅ Gemini API 연결 완료")
 
-	techniquesMgr, err = NewTechniqueManager("bachata_techniques.json")
+	techniquesMgr, err = NewTechniqueManager(techPath)
 	if err != nil {
 		log.Printf("⚠️ 바차타 용어 사전 로드 실패: %v", err)
 	} else {
@@ -96,7 +108,7 @@ func main() {
 	}
 
 	// Initialize glossary manager
-	glossaryMgr, err = NewGlossaryManager("correction_glossary.json", "translation_glossary.json")
+	glossaryMgr, err = NewGlossaryManager(correctionPath, translationPath)
 	if err != nil {
 		log.Printf("⚠️ 용어집 관리자 초기화 실패: %v", err)
 	}
@@ -571,15 +583,21 @@ func processUserEdit(s *discordgo.Session, session *Session, editInstruction str
 **원본 SRT 정보:**
 - 총 %d개 항목 (1번부터 %d번까지)
 
+**중요: 사용자가 "오류가 있다"고만 말하고 구체적인 내용을 안 알려준 경우:**
+1. 해당 행의 텍스트를 분석하세요
+2. 맞춤법, 띄어쓰기, 바차타 용어 오류를 찾으세요
+3. 발견한 오류를 수정하세요
+4. 오류가 없으면 빈 배열 []을 반환하세요
+
 **출력 형식 (JSON):**
 {
   "changes": [
     {
-      "entry_number": 641,
+      "entry_number": 305,
       "field": "text",
       "old_value": "기존 텍스트",
       "new_value": "수정할 텍스트",
-      "reason": "수정 이유"
+      "reason": "맞춤법 오류: '~' → '~' 수정"
     }
   ]
 }
@@ -589,7 +607,7 @@ func processUserEdit(s *discordgo.Session, session *Session, editInstruction str
 2. field: "text" (텍스트만 수정 가능, 타임코드는 수정 불가)
 3. old_value: 현재 텍스트 (확인용)
 4. new_value: 수정할 텍스트
-5. reason: 왜 이렇게 수정하는지 간단한 설명
+5. reason: 왜 이렇게 수정하는지 간단한 설명 (발견한 오류 명시)
 
 **참고: 원본 SRT 일부 (문맥 파악용):**
 %s

@@ -39,7 +39,7 @@ func NewCorrector(gemini *GeminiClient, techniques *TechniqueManager, glossary *
 
 // ExtractCorrectionSuggestions analyzes SRT content and extracts correction suggestions
 func (c *Corrector) ExtractCorrectionSuggestions(content string) ([]CorrectionSuggestion, error) {
-	log.Println("🔍 AI가 교정이 필요한 부분을 분석 중... (Gemini 1.5 Flash 사용)")
+	log.Println("🔍 AI가 교정이 필요한 부분을 분석 중... (Gemini 2.5 Pro 사용)")
 
 	// Filter relevant terms
 	filteredTerms := c.techniques.GetFilteredTerms(content)
