@@ -560,90 +560,102 @@ func processUserEdit(s *discordgo.Session, session *Session, editInstruction str
 		return
 	}
 
+	// NEW APPROACH: Instead of asking AI to regenerate entire file,
+	// ask AI to identify ONLY the specific changes needed, then apply them programmatically
 	prompt := fmt.Sprintf(`사용자가 바차타 강습 자막을 수정하려고 자연어로 지시했습니다.
-사용자의 지시를 이해하고, 수정된 SRT 파일 전체를 출력하세요.
-
-**원본 SRT:**
-%s
+사용자의 지시를 분석하고, 어떤 자막 항목을 어떻게 수정해야 하는지 JSON 형식으로 출력하세요.
 
 **사용자 수정 지시:**
 %s
 
-**절대적으로 지켜야 할 규칙 (위반 시 실패):**
-1. **타임코드는 1글자도 변경하지 마세요** - 원본과 100%% 동일하게 유지
-2. **자막 번호는 그대로 유지하세요** - 1부터 %d까지 순차적으로
-3. **자막 항목 개수는 정확히 %d개를 유지하세요** - 절대 추가/삭제 금지
-4. **모든 자막 항목을 빠짐없이 출력하세요** - 1번부터 %d번까지 전부
-5. 사용자가 지시한 텍스트 내용만 수정하세요
-6. SRT 형식을 정확히 지켜주세요:
-   - 번호
-   - 타임코드 (HH:MM:SS,mmm --> HH:MM:SS,mmm)
-   - 텍스트
-   - 빈 줄
+**원본 SRT 정보:**
+- 총 %d개 항목 (1번부터 %d번까지)
 
-**중요: 항목 개수 확인**
-- 원본: %d개 항목
-- 출력: %d개 항목 (반드시 동일)
-- 1번부터 %d번까지 모두 포함
+**출력 형식 (JSON):**
+{
+  "changes": [
+    {
+      "entry_number": 641,
+      "field": "text",
+      "old_value": "기존 텍스트",
+      "new_value": "수정할 텍스트",
+      "reason": "수정 이유"
+    }
+  ]
+}
 
-**예시:**
-1
-00:00:00,000 --> 00:00:02,970
-수정된 텍스트
+**규칙:**
+1. entry_number: 수정할 자막 번호 (1부터 %d까지)
+2. field: "text" (텍스트만 수정 가능, 타임코드는 수정 불가)
+3. old_value: 현재 텍스트 (확인용)
+4. new_value: 수정할 텍스트
+5. reason: 왜 이렇게 수정하는지 간단한 설명
 
-2
-00:00:02,970 --> 00:00:04,880
-수정된 텍스트
+**참고: 원본 SRT 일부 (문맥 파악용):**
+%s
 
-... (중간 생략하지 말고 모두 출력)
+**출력:** JSON만 출력하세요 (마크다운 코드 블록 없이)`, 
+		editInstruction,
+		len(originalEntries), len(originalEntries),
+		len(originalEntries),
+		getContextAroundEntry(originalEntries, editInstruction))
 
-%d
-[마지막 타임코드]
-[마지막 텍스트]
-
-**출력:** 수정된 전체 SRT 파일 (마크다운 코드 블록 없이, %d개 항목 전부)`, 
-		session.CorrectedKorean, editInstruction, 
-		len(originalEntries), len(originalEntries), len(originalEntries),
-		len(originalEntries), len(originalEntries), len(originalEntries),
-		len(originalEntries), len(originalEntries))
-
-	editedSRT, err := geminiClient.GenerateContent(prompt)
+	response, err := geminiClient.GenerateContent(prompt)
 	if err != nil {
 		s.ChannelMessageEdit(session.ChannelID, msg.ID, fmt.Sprintf("❌ 자막 수정 실패: %v", err))
 		return
 	}
 
 	// Clean response
-	editedSRT = strings.TrimSpace(editedSRT)
-	editedSRT = strings.TrimPrefix(editedSRT, "```srt")
-	editedSRT = strings.TrimPrefix(editedSRT, "```")
-	editedSRT = strings.TrimSuffix(editedSRT, "```")
-	editedSRT = strings.TrimSpace(editedSRT)
+	response = strings.TrimSpace(response)
+	response = strings.TrimPrefix(response, "```json")
+	response = strings.TrimPrefix(response, "```")
+	response = strings.TrimSuffix(response, "```")
+	response = strings.TrimSpace(response)
 
-	// Validate edited SRT
-	editedEntries, err := ParseSRT(editedSRT)
-	if err != nil {
-		s.ChannelMessageEdit(session.ChannelID, msg.ID, fmt.Sprintf("❌ 수정된 SRT 파싱 실패: %v\n\n원본을 유지합니다.", err))
+	// Parse JSON response
+	var changeRequest struct {
+		Changes []struct {
+			EntryNumber int    `json:"entry_number"`
+			Field       string `json:"field"`
+			OldValue    string `json:"old_value"`
+			NewValue    string `json:"new_value"`
+			Reason      string `json:"reason"`
+		} `json:"changes"`
+	}
+
+	if err := json.Unmarshal([]byte(response), &changeRequest); err != nil {
+		s.ChannelMessageEdit(session.ChannelID, msg.ID, fmt.Sprintf("❌ AI 응답 파싱 실패: %v\n\n원본을 유지합니다.", err))
 		return
 	}
 
-	// Strict validation: Check timecodes match exactly
-	if err := ValidateTimecodes(originalEntries, editedEntries); err != nil {
-		log.Printf("⚠️ 타임코드 검증 실패: %v", err)
-		s.ChannelMessageEdit(session.ChannelID, msg.ID, fmt.Sprintf("❌ AI가 타임코드를 변경했습니다: %v\n\n원본 타임코드를 복원합니다...", err))
-		
-		// Restore original timecodes but keep edited text
-		for i := range editedEntries {
-			if i < len(originalEntries) {
-				editedEntries[i].Index = originalEntries[i].Index
-				editedEntries[i].StartTime = originalEntries[i].StartTime
-				editedEntries[i].EndTime = originalEntries[i].EndTime
-			}
+	// Apply changes programmatically
+	changeCount := 0
+	for _, change := range changeRequest.Changes {
+		if change.EntryNumber < 1 || change.EntryNumber > len(originalEntries) {
+			log.Printf("⚠️ 잘못된 항목 번호: %d (범위: 1-%d)", change.EntryNumber, len(originalEntries))
+			continue
 		}
-		
-		editedSRT = FormatSRT(editedEntries)
+
+		if change.Field != "text" {
+			log.Printf("⚠️ 텍스트 외 필드 수정 시도 무시: %s", change.Field)
+			continue
+		}
+
+		idx := change.EntryNumber - 1
+		originalEntries[idx].Text = change.NewValue
+		changeCount++
+		log.Printf("✅ 항목 %d 수정: [%s] → [%s] (이유: %s)", 
+			change.EntryNumber, change.OldValue, change.NewValue, change.Reason)
 	}
 
+	if changeCount == 0 {
+		s.ChannelMessageEdit(session.ChannelID, msg.ID, "⚠️ 적용할 수정 사항이 없습니다. 지시를 더 구체적으로 입력해주세요.")
+		return
+	}
+
+	// Regenerate SRT from modified entries
+	editedSRT := FormatSRT(originalEntries)
 	session.CorrectedKorean = editedSRT
 
 	// Save updated version
@@ -652,13 +664,57 @@ func processUserEdit(s *discordgo.Session, session *Session, editInstruction str
 
 	absKoreanPath, _ := filepath.Abs(koreanPath)
 
-	s.ChannelMessageEdit(session.ChannelID, msg.ID, fmt.Sprintf("✅ 자막이 수정되었습니다!\n\n"+
+	s.ChannelMessageEdit(session.ChannelID, msg.ID, fmt.Sprintf("✅ 자막이 수정되었습니다! (%d개 항목 수정)\n\n"+
 		"📂 저장 위치: `%s`\n\n"+
 		"추가 수정이 필요하면 다시 입력하세요.\n"+
 		"수정이 완료되었으면 `!승인`을 입력하세요.",
-		absKoreanPath))
+		changeCount, absKoreanPath))
 
 	sessionManager.UpdateSession(session.UserID, session)
+}
+
+// getContextAroundEntry extracts relevant SRT entries based on user instruction
+func getContextAroundEntry(entries []SRTEntry, instruction string) string {
+	// Try to extract entry number from instruction
+	var targetEntry int
+	fmt.Sscanf(instruction, "%d", &targetEntry)
+	
+	if targetEntry < 1 || targetEntry > len(entries) {
+		// If no specific entry mentioned, return first 10 and last 10 entries
+		var context strings.Builder
+		for i := 0; i < 10 && i < len(entries); i++ {
+			context.WriteString(fmt.Sprintf("%d\n%s --> %s\n%s\n\n", 
+				entries[i].Index, entries[i].StartTime, entries[i].EndTime, entries[i].Text))
+		}
+		context.WriteString("...\n\n")
+		start := len(entries) - 10
+		if start < 10 {
+			start = 10
+		}
+		for i := start; i < len(entries); i++ {
+			context.WriteString(fmt.Sprintf("%d\n%s --> %s\n%s\n\n", 
+				entries[i].Index, entries[i].StartTime, entries[i].EndTime, entries[i].Text))
+		}
+		return context.String()
+	}
+
+	// Return context around the specific entry (±5 entries)
+	var context strings.Builder
+	start := targetEntry - 6
+	if start < 0 {
+		start = 0
+	}
+	end := targetEntry + 5
+	if end > len(entries) {
+		end = len(entries)
+	}
+
+	for i := start; i < end; i++ {
+		context.WriteString(fmt.Sprintf("%d\n%s --> %s\n%s\n\n", 
+			entries[i].Index, entries[i].StartTime, entries[i].EndTime, entries[i].Text))
+	}
+
+	return context.String()
 }
 
 func proceedToApproval(s *discordgo.Session, session *Session) {
