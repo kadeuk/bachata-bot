@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	geminiClient      *GeminiClient
+	deepseekClient    *DeepSeekClient
 	techniquesMgr     *TechniqueManager
 	translator        *Translator
 	sessionManager    *SessionManager
@@ -35,7 +35,7 @@ var (
 	
 	// Build-time variables (injected via -ldflags)
 	DiscordToken string
-	GeminiAPIKey string
+	DeepSeekAPIKey string
 )
 
 func main() {
@@ -54,7 +54,7 @@ func main() {
 
 	// Get API keys from build-time variables or environment variables
 	discordToken := DiscordToken
-	geminiAPIKey := GeminiAPIKey
+	deepseekAPIKey := DeepSeekAPIKey
 	
 	// Fallback to environment variables if build-time variables are empty
 	if discordToken == "" {
@@ -64,29 +64,29 @@ func main() {
 		discordToken = os.Getenv("DISCORD_TOKEN")
 	}
 	
-	if geminiAPIKey == "" {
+	if deepseekAPIKey == "" {
 		if err := godotenv.Load(); err != nil {
 			log.Println("⚠️ .env 파일을 찾을 수 없습니다.")
 		}
-		geminiAPIKey = os.Getenv("GEMINI_API_KEY")
+		deepseekAPIKey = os.Getenv("DEEPSEEK_API_KEY")
 	}
 
 	if discordToken == "" {
 		log.Fatal("❌ DISCORD_TOKEN이 설정되지 않았습니다. GitHub Secrets 또는 .env 파일을 확인하세요.")
 	}
 
-	if geminiAPIKey == "" {
-		log.Fatal("❌ GEMINI_API_KEY가 설정되지 않았습니다. GitHub Secrets 또는 .env 파일을 확인하세요.")
+	if deepseekAPIKey == "" {
+		log.Fatal("❌ DEEPSEEK_API_KEY가 설정되지 않았습니다. GitHub Secrets 또는 .env 파일을 확인하세요.")
 	}
 
 	// Initialize components
 	var err error
-	geminiClient, err = NewGeminiClient(geminiAPIKey)
+	deepseekClient, err = NewDeepSeekClient(deepseekAPIKey)
 	if err != nil {
-		log.Fatalf("❌ Gemini 클라이언트 초기화 실패: %v", err)
+		log.Fatalf("❌ DeepSeek 클라이언트 초기화 실패: %v", err)
 	}
-	defer geminiClient.Close()
-	log.Println("✅ Gemini API 연결 완료")
+	defer deepseekClient.Close()
+	log.Println("✅ DeepSeek API 연결 완료")
 
 	techniquesMgr, err = NewTechniqueManager("bachata_techniques.json")
 	if err != nil {
@@ -101,10 +101,10 @@ func main() {
 		log.Printf("⚠️ 용어집 관리자 초기화 실패: %v", err)
 	}
 
-	translator = NewTranslator(geminiClient, techniquesMgr, glossaryMgr)
+	translator = NewTranslator(deepseekClient, techniquesMgr, glossaryMgr)
 	sessionManager = NewSessionManager()
 	textCleaner = NewTextCleaner()
-	corrector = NewCorrector(geminiClient, techniquesMgr, glossaryMgr)
+	corrector = NewCorrector(deepseekClient, techniquesMgr, glossaryMgr)
 	parallelProcessor = NewParallelProcessor(3) // 최대 3개 청크 동시 처리
 	numberConverter = NewNumberConverter()
 	spellingCorrector = NewSpellingCorrector()
@@ -293,7 +293,7 @@ func continueProcessingAfterFilename(s *discordgo.Session, session *Session) {
 		log.Printf("✅ 1단계 숫자 변환 완료 (연속된 숫자만)")
 		
 		// STEP 2: AI post-processing for remaining numbers (context-aware)
-		cleanedContent, err = geminiClient.PostProcessNumbers(cleanedContent)
+		cleanedContent, err = deepseekClient.PostProcessNumbers(cleanedContent)
 		if err != nil {
 			log.Printf("⚠️ AI 숫자 후처리 실패: %v (1단계 결과 사용)", err)
 		} else {
@@ -607,7 +607,7 @@ func processUserEdit(s *discordgo.Session, session *Session, editInstruction str
 		len(originalEntries), len(originalEntries), len(originalEntries),
 		len(originalEntries), len(originalEntries))
 
-	editedSRT, err := geminiClient.GenerateContent(prompt)
+	editedSRT, err := deepseekClient.GenerateContent(prompt)
 	if err != nil {
 		s.ChannelMessageEdit(session.ChannelID, msg.ID, fmt.Sprintf("❌ 자막 수정 실패: %v", err))
 		return
@@ -782,7 +782,7 @@ func processMetadataEdit(s *discordgo.Session, session *Session, editInstruction
   "description": "수정된 설명"
 }`, session.KoreanTitle, session.KoreanDescription, editInstruction)
 
-	response, err := geminiClient.GenerateContent(prompt)
+	response, err := deepseekClient.GenerateContent(prompt)
 	if err != nil {
 		s.ChannelMessageEdit(session.ChannelID, msg.ID, fmt.Sprintf("❌ 제목/설명 수정 실패: %v", err))
 		return

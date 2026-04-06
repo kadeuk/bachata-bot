@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"log"
 	"strings"
-
-	"github.com/google/generative-ai-go/genai"
 )
 
 // Translator handles translation operations
 type Translator struct {
-	gemini            *GeminiClient
+	aiClient          AIClient
 	techniques        *TechniqueManager
 	glossary          *GlossaryManager
 	chunkSize         int
@@ -19,9 +17,9 @@ type Translator struct {
 }
 
 // NewTranslator creates a new translator
-func NewTranslator(gemini *GeminiClient, techniques *TechniqueManager, glossary *GlossaryManager) *Translator {
+func NewTranslator(aiClient AIClient, techniques *TechniqueManager, glossary *GlossaryManager) *Translator {
 	return &Translator{
-		gemini:            gemini,
+		aiClient:          aiClient,
 		techniques:        techniques,
 		glossary:          glossary,
 		chunkSize:         60,                      // Process 60 entries at a time
@@ -31,7 +29,7 @@ func NewTranslator(gemini *GeminiClient, techniques *TechniqueManager, glossary 
 
 // CorrectKoreanSRT corrects Korean STT errors
 func (t *Translator) CorrectKoreanSRT(content string, progressCallback func(current, total int)) (string, error) {
-	log.Println("📝 한국어 자막 교정 시작... (Gemini 1.5 Flash 사용)")
+	log.Println("📝 한국어 자막 교정 시작... (DeepSeek 사용)")
 
 	// Parse SRT
 	entries, err := ParseSRT(content)
@@ -45,16 +43,6 @@ func (t *Translator) CorrectKoreanSRT(content string, progressCallback func(curr
 	// Filter relevant terms
 	filteredTerms := t.techniques.GetFilteredTerms(content)
 	systemPrompt := t.techniques.BuildCorrectionPrompt(filteredTerms)
-
-	// Use Gemini 2.5 Pro (Flash not available in v1beta)
-	flashModel := t.gemini.client.GenerativeModel("gemini-2.5-pro")
-	flashModel.SetTemperature(0.2)
-	flashModel.SetTopK(40)
-	flashModel.SetTopP(0.95)
-	flashModel.SetMaxOutputTokens(8192)
-	flashModel.SystemInstruction = &genai.Content{
-		Parts: []genai.Part{genai.Text(systemPrompt)},
-	}
 
 	// Split into chunks
 	chunks := ChunkSRT(entries, t.chunkSize)
@@ -71,22 +59,12 @@ func (t *Translator) CorrectKoreanSRT(content string, progressCallback func(curr
 		var lastErr error
 
 		for attempt := 1; attempt <= maxRetries; attempt++ {
-			// Use Flash model instead of default Pro model
-			resp, err := flashModel.GenerateContent(t.gemini.ctx, genai.Text(userPrompt))
+			// Use AIClient interface instead of Gemini SDK
+			response, err := t.aiClient.GenerateContentWithSystemPrompt(systemPrompt, userPrompt)
 			if err != nil {
 				lastErr = fmt.Errorf("API call failed: %v", err)
 				log.Printf("⚠️ 청크 %d 처리 실패 (시도 %d/%d): %v", index+1, attempt, maxRetries, err)
 				continue
-			}
-
-			// Extract text from response
-			var response string
-			if len(resp.Candidates) > 0 && resp.Candidates[0].Content != nil {
-				for _, part := range resp.Candidates[0].Content.Parts {
-					if txt, ok := part.(genai.Text); ok {
-						response += string(txt)
-					}
-				}
 			}
 
 			correctedEntries, err = ParseChunkResponse(response)
@@ -138,9 +116,9 @@ func (t *Translator) CorrectKoreanSRT(content string, progressCallback func(curr
 	return result, nil
 }
 
-// TranslateToLanguage translates SRT to target language using gemini-2.5-flash
+// TranslateToLanguage translates SRT to target language using DeepSeek
 func (t *Translator) TranslateToLanguage(koreanSRT, targetLang, langName string, progressCallback func(current, total int)) (string, error) {
-	log.Printf("🌍 %s 번역 시작... (Gemini 2.5 Flash 사용)", langName)
+	log.Printf("🌍 %s 번역 시작... (DeepSeek 사용)", langName)
 
 	// Parse SRT
 	entries, err := ParseSRT(koreanSRT)
@@ -150,13 +128,6 @@ func (t *Translator) TranslateToLanguage(koreanSRT, targetLang, langName string,
 
 	totalEntries := len(entries)
 	log.Printf("   총 %d개 자막 항목", totalEntries)
-
-	// Use Gemini 2.5 Flash for translation (high quality, optimized)
-	flashModel := t.gemini.client.GenerativeModel("gemini-2.5-flash")
-	flashModel.SetTemperature(0.2)
-	flashModel.SetTopK(40)
-	flashModel.SetTopP(0.95)
-	flashModel.SetMaxOutputTokens(8192)
 
 	// Split into chunks
 	chunks := ChunkSRT(entries, t.chunkSize)
@@ -174,10 +145,6 @@ func (t *Translator) TranslateToLanguage(koreanSRT, targetLang, langName string,
 			systemPrompt = t.techniques.BuildTranslationPrompt(targetLang, langName)
 		}
 		
-		flashModel.SystemInstruction = &genai.Content{
-			Parts: []genai.Part{genai.Text(systemPrompt)},
-		}
-		
 		userPrompt := fmt.Sprintf("아래 한국어 SRT 자막을 번역하세요. **중요: 모든 자막 항목을 빠짐없이 출력하세요**\n\n%s", chunkText)
 
 		// Retry logic with validation
@@ -186,21 +153,11 @@ func (t *Translator) TranslateToLanguage(koreanSRT, targetLang, langName string,
 		var lastErr error
 
 		for attempt := 1; attempt <= maxRetries; attempt++ {
-			resp, err := flashModel.GenerateContent(t.gemini.ctx, genai.Text(userPrompt))
+			response, err := t.aiClient.GenerateContentWithSystemPrompt(systemPrompt, userPrompt)
 			if err != nil {
 				lastErr = fmt.Errorf("API call failed: %v", err)
 				log.Printf("⚠️ 청크 %d 번역 실패 (시도 %d/%d): %v", index+1, attempt, maxRetries, err)
 				continue
-			}
-
-			// Extract text from response
-			var response string
-			if len(resp.Candidates) > 0 && resp.Candidates[0].Content != nil {
-				for _, part := range resp.Candidates[0].Content.Parts {
-					if txt, ok := part.(genai.Text); ok {
-						response += string(txt)
-					}
-				}
 			}
 
 			// Extract new terms if glossary is available
@@ -271,7 +228,7 @@ func (t *Translator) GenerateMetadata(koreanSRT string) (string, string, error) 
 	systemPrompt := t.techniques.BuildMetadataPrompt()
 	userPrompt := fmt.Sprintf("아래 자막을 바탕으로 유튜브 제목과 설명을 생성하세요:\n\n%s", koreanSRT)
 
-	response, err := t.gemini.GenerateContentWithSystemPrompt(systemPrompt, userPrompt)
+	response, err := t.aiClient.GenerateContentWithSystemPrompt(systemPrompt, userPrompt)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate metadata: %v", err)
 	}
@@ -328,7 +285,7 @@ func (t *Translator) TranslateMetadata(title, description, targetLang, langName 
 	var lastErr error
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
-		response, err := t.gemini.GenerateContent(prompt)
+		response, err := t.aiClient.GenerateContent(prompt)
 		if err != nil {
 			lastErr = fmt.Errorf("API call failed: %v", err)
 			log.Printf("⚠️ %s 메타데이터 번역 실패 (시도 %d/%d): %v", langName, attempt, maxRetries, err)
