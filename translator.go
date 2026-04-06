@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 )
 
 // Translator handles translation operations
@@ -35,7 +36,7 @@ func NewTranslator(aiClient AIClient, techniques *TechniqueManager, glossary *Gl
 		aiClient:          aiClient,
 		techniques:        techniques,
 		glossary:          glossary,
-		chunkSize:         60,                      // Process 60 entries at a time
+		chunkSize:         40,                      // Process 40 entries at a time (142번 문제 해결)
 		parallelProcessor: NewParallelProcessor(3), // 최대 3개 청크 동시 처리
 	}
 
@@ -248,18 +249,26 @@ Translate the provided Korean subtitles into %s while strictly following these r
 ## 📜 번역할 자막 내용 (총 %d개 항목):
 %s`, len(chunk), len(chunk), len(chunk), len(chunk), len(chunk), chunkText)
 
-		// Retry logic with validation
-		maxRetries := 3
+		// 강제 완성 재시도 로직 (사용자 요구: "두번세번 100번을 해서라도")
+		maxRetries := 5  // 3회에서 5회로 증가
 		var translatedEntries []SRTEntry
 		var lastErr error
+		var lastResponse string
 
 		for attempt := 1; attempt <= maxRetries; attempt++ {
 			response, err := t.aiClient.GenerateContentWithSystemPrompt(systemPrompt, userPrompt)
 			if err != nil {
-				lastErr = fmt.Errorf("API call failed: %v", err)
+				lastErr = fmt.Errorf("API 호출 실패: %v", err)
 				log.Printf("⚠️ 청크 %d 번역 실패 (시도 %d/%d): %v", index+1, attempt, maxRetries, err)
+				
+				// 짧은 대기 후 재시도
+				if attempt < maxRetries {
+					time.Sleep(2 * time.Second)
+				}
 				continue
 			}
+
+			lastResponse = response
 
 			// Extract new terms if glossary is available
 			if t.glossary != nil {
@@ -275,32 +284,85 @@ Translate the provided Korean subtitles into %s while strictly following these r
 
 			translatedEntries, err = ParseChunkResponse(response)
 			if err != nil {
-				lastErr = fmt.Errorf("parse failed: %v", err)
+				lastErr = fmt.Errorf("파싱 실패: %v", err)
 				log.Printf("⚠️ 청크 %d 파싱 실패 (시도 %d/%d): %v", index+1, attempt, maxRetries, err)
+				
+				// 응답이 너무 짧은 경우 (불완전한 응답)
+				if len(response) < 100 && attempt < maxRetries {
+					log.Printf("⚠️ 응답 너무 짧음 (%d자), 재시도", len(response))
+					time.Sleep(2 * time.Second)
+					continue
+				}
 				continue
 			}
 
-			// Validate timecodes and entry count
+			// Validate timecodes and entry count - 엄격한 검증
 			if err := ValidateTimecodes(chunk, translatedEntries); err != nil {
 				lastErr = err
 				log.Printf("⚠️ 청크 %d 검증 실패 (시도 %d/%d): %v", index+1, attempt, maxRetries, err)
+				
+				// 항목 수가 부족한 경우
+				if len(translatedEntries) < len(chunk) {
+					log.Printf("⚠️ 항목 수 부족: 예상=%d, 실제=%d", len(chunk), len(translatedEntries))
+					
+					// 마지막 시도가 아니면 재시도
+					if attempt < maxRetries {
+						log.Printf("⚠️ 항목 수 불일치, 재시도")
+						time.Sleep(3 * time.Second)
+						continue
+					}
+				}
 
 				// If this is the last attempt, use original chunk
 				if attempt == maxRetries {
-					log.Printf("⚠️ 청크 %d: 최대 재시도 횟수 초과, 원본 사용", index+1)
-					translatedEntries = chunk
+					log.Printf("⚠️ 청크 %d: 최대 재시도 횟수 초과", index+1)
+					
+					// 원본 청크 사용하지만, 가능한 한 많은 항목 유지
+					if len(translatedEntries) > 0 {
+						log.Printf("⚠️ 부분적 결과 사용: %d/%d 항목", len(translatedEntries), len(chunk))
+						// 부분적 결과라도 사용
+					} else {
+						log.Printf("⚠️ 원본 청크 사용")
+						translatedEntries = chunk
+					}
 					break
 				}
 				continue
 			}
 
-			// Success!
+			// 추가 검증: 모든 항목이 있는지 확인
+			if len(translatedEntries) != len(chunk) {
+				lastErr = fmt.Errorf("항목 수 불일치: 예상=%d, 실제=%d", len(chunk), len(translatedEntries))
+				log.Printf("⚠️ %s", lastErr)
+				
+				if attempt < maxRetries {
+					log.Printf("⚠️ 항목 수 불일치, 재시도")
+					time.Sleep(3 * time.Second)
+					continue
+				}
+			}
+
+			// 성공!
+			log.Printf("✅ 청크 %d 번역 성공 (시도 %d/%d): %d개 항목", 
+				index+1, attempt, maxRetries, len(translatedEntries))
 			break
 		}
 
 		if lastErr != nil && len(translatedEntries) == 0 {
-			log.Printf("❌ 모든 재시도 실패, 원본 사용")
+			log.Printf("❌ 청크 %d: 모든 재시도 실패, 원본 사용", index+1)
+			
+			// 응답이 있으면 로깅
+			if lastResponse != "" {
+				log.Printf("⚠️ 마지막 응답 길이: %d자", len(lastResponse))
+				if len(lastResponse) < 500 {
+					log.Printf("⚠️ 마지막 응답 (처음 500자): %s", lastResponse[:min(500, len(lastResponse))])
+				}
+			}
+			
 			translatedEntries = chunk
+		} else if len(translatedEntries) < len(chunk) {
+			log.Printf("⚠️ 청크 %d: 부분적 결과 (%d/%d 항목)", 
+				index+1, len(translatedEntries), len(chunk))
 		}
 
 		return translatedEntries, nil
