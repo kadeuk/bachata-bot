@@ -15,7 +15,7 @@ type SRTEntry struct {
 	Text      string
 }
 
-// ParseSRT parses an SRT file content into entries
+// ParseSRT parses an SRT file content into entries with robust error handling
 func ParseSRT(content string) ([]SRTEntry, error) {
 	var entries []SRTEntry
 	
@@ -29,14 +29,42 @@ func ParseSRT(content string) ([]SRTEntry, error) {
 		}
 		
 		lines := strings.Split(block, "\n")
+		
+		// Handle incomplete entries (e.g., "143\n00")
 		if len(lines) < 3 {
+			// Try to recover incomplete entry
+			if len(lines) == 2 {
+				// Check if this is an incomplete entry like "143\n00"
+				indexStr := strings.TrimSpace(lines[0])
+				timecodeStr := strings.TrimSpace(lines[1])
+				
+				// Check if first line is a number (index)
+				if _, err := strconv.Atoi(indexStr); err == nil {
+					// Check if second line looks like an incomplete timecode
+					if len(timecodeStr) <= 5 && strings.Contains(timecodeStr, ":") {
+						// This is an incomplete entry, skip it with warning
+						fmt.Printf("⚠️ 불완전한 항목 건너뛰기: %s -> %s\n", indexStr, timecodeStr)
+						continue
+					}
+				}
+			}
 			continue // Invalid entry
 		}
 		
 		// Parse index
 		index, err := strconv.Atoi(strings.TrimSpace(lines[0]))
 		if err != nil {
-			continue // Skip invalid index
+			// Try to extract number from the line
+			re := regexp.MustCompile(`\d+`)
+			if matches := re.FindStringSubmatch(lines[0]); matches != nil {
+				if idx, err := strconv.Atoi(matches[0]); err == nil {
+					index = idx
+				} else {
+					continue // Skip invalid index
+				}
+			} else {
+				continue // Skip invalid index
+			}
 		}
 		
 		// Parse timecode
@@ -145,4 +173,71 @@ func ParseChunkResponse(response string) ([]SRTEntry, error) {
 	response = strings.TrimSpace(response)
 	
 	return ParseSRT(response)
+}
+
+// ValidateAndFixSRT validates SRT content and fixes incomplete entries
+func ValidateAndFixSRT(content, originalContent string) (string, error) {
+	// Parse both contents
+	entries, err := ParseSRT(content)
+	if err != nil {
+		return content, fmt.Errorf("파싱 실패: %v", err)
+	}
+
+	originalEntries, err := ParseSRT(originalContent)
+	if err != nil {
+		return content, fmt.Errorf("원본 파싱 실패: %v", err)
+	}
+
+	// Check entry count
+	if len(entries) != len(originalEntries) {
+		return content, fmt.Errorf("항목 수 불일치: 원본=%d, 결과=%d", len(originalEntries), len(entries))
+	}
+
+	// Check for incomplete entries
+	for i, entry := range entries {
+		// Check if text is empty or too short
+		if strings.TrimSpace(entry.Text) == "" {
+			return content, fmt.Errorf("빈 텍스트 항목 발견: 인덱스=%d", entry.Index)
+		}
+
+		// Check if timecode is valid
+		if !isValidTimecode(entry.StartTime) || !isValidTimecode(entry.EndTime) {
+			return content, fmt.Errorf("잘못된 타임코드: 인덱스=%d, 시작=%s, 종료=%s", 
+				entry.Index, entry.StartTime, entry.EndTime)
+		}
+
+		// Check if index is sequential
+		if i > 0 && entry.Index != entries[i-1].Index+1 {
+			return content, fmt.Errorf("인덱스 순서 오류: %d -> %d", entries[i-1].Index, entry.Index)
+		}
+	}
+
+	// All checks passed
+	return content, nil
+}
+
+// isValidTimecode checks if a timecode is valid
+func isValidTimecode(timecode string) bool {
+	// Check format: HH:MM:SS,mmm
+	parts := strings.Split(timecode, ":")
+	if len(parts) != 3 {
+		return false
+	}
+
+	// Check milliseconds part
+	millisParts := strings.Split(parts[2], ",")
+	if len(millisParts) != 2 {
+		return false
+	}
+
+	// Check if all parts are numbers
+	for _, part := range []string{parts[0], parts[1], millisParts[0], millisParts[1]} {
+		for _, ch := range part {
+			if ch < '0' || ch > '9' {
+				return false
+			}
+		}
+	}
+
+	return true
 }

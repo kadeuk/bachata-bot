@@ -150,7 +150,8 @@
     "english_korean_pronunciation": "각기",
     "english_equivalent": "Staccato ",
     "meaning": "동작을 딱딱 끊어치는 아이솔레이션 무브.",
-    "priority": 1
+    "priority": 1,
+    "variants": ["골빼"]
   },
   {
     "id": 15,

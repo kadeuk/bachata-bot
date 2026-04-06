@@ -40,16 +40,33 @@ var (
 
 func main() {
 	// Check for CLI flags
-	if len(os.Args) > 1 && os.Args[1] == "--fix-srt" {
-		if len(os.Args) < 3 {
-			log.Fatal("❌ 사용법: bachata-bot --fix-srt <디렉토리 경로>")
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--fix-srt":
+			if len(os.Args) < 3 {
+				log.Fatal("❌ 사용법: bachata-bot --fix-srt <디렉토리 경로>")
+			}
+			targetDir := os.Args[2]
+			log.Printf("🔧 SRT 파일 수정 모드: %s", targetDir)
+			if err := FixExistingSRTFiles(targetDir); err != nil {
+				log.Fatalf("❌ 수정 실패: %v", err)
+			}
+			return
+			
+		case "--process-local":
+			// Initialize components first
+			initializeComponents()
+			log.Println("🔧 로컬 파일 처리 모드 시작...")
+			if err := ProcessLocalFiles(); err != nil {
+				log.Fatalf("❌ 로컬 파일 처리 실패: %v", err)
+			}
+			log.Println("✅ 로컬 파일 처리 완료!")
+			return
+			
+		case "--help", "-h":
+			printHelp()
+			return
 		}
-		targetDir := os.Args[2]
-		log.Printf("🔧 SRT 파일 수정 모드: %s", targetDir)
-		if err := FixExistingSRTFiles(targetDir); err != nil {
-			log.Fatalf("❌ 수정 실패: %v", err)
-		}
-		return
 	}
 
 	// Get API keys from build-time variables or environment variables
@@ -879,4 +896,52 @@ func continueMetadataTranslation(s *discordgo.Session, session *Session) {
 	log.Println("✅ 모든 번역 작업 완료!")
 
 	sessionManager.DeleteSession(session.UserID)
+}
+
+// initializeComponents initializes all components for local processing
+func initializeComponents() {
+	// Get API key from environment
+	deepseekAPIKey := os.Getenv("DEEPSEEK_API_KEY")
+	if deepseekAPIKey == "" {
+		if err := godotenv.Load(); err != nil {
+			log.Println("⚠️ .env 파일을 찾을 수 없습니다.")
+		}
+		deepseekAPIKey = os.Getenv("DEEPSEEK_API_KEY")
+	}
+
+	if deepseekAPIKey == "" {
+		log.Fatal("❌ DEEPSEEK_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
+	}
+
+	// Initialize components
+	var err error
+	deepseekClient, err = NewDeepSeekClient(deepseekAPIKey)
+	if err != nil {
+		log.Fatalf("❌ DeepSeek 클라이언트 초기화 실패: %v", err)
+	}
+	defer deepseekClient.Close()
+	log.Println("✅ DeepSeek API 연결 완료")
+
+	techniquesMgr, err = NewTechniqueManager("bachata_techniques.json")
+	if err != nil {
+		log.Printf("⚠️ 바차타 용어 사전 로드 실패: %v", err)
+	} else {
+		log.Println("✅ 바차타 용어 사전 로드 완료")
+	}
+
+	// Initialize glossary manager
+	glossaryMgr, err = NewGlossaryManager("correction_glossary.json", "translation_glossary.json")
+	if err != nil {
+		log.Printf("⚠️ 용어집 관리자 초기화 실패: %v", err)
+	}
+
+	translator = NewTranslator(deepseekClient, techniquesMgr, glossaryMgr)
+	sessionManager = NewSessionManager()
+	textCleaner = NewTextCleaner()
+	corrector = NewCorrector(deepseekClient, techniquesMgr, glossaryMgr)
+	parallelProcessor = NewParallelProcessor(3) // 최대 3개 청크 동시 처리
+	numberConverter = NewNumberConverter()
+	spellingCorrector = NewSpellingCorrector()
+	log.Println("✅ 번역기 초기화 완료")
+	log.Println("✅ 숫자 변환기 및 맞춤법 교정기 초기화 완료")
 }

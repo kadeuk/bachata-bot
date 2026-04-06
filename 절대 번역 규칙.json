@@ -1,0 +1,51 @@
+{
+  "system_rules": [
+    "Zero Omission: 원본 한국어 자막에 포함된 카운트 숫자(예: 1, 2, 8)와 동작 명칭은 번역에서 절대 누락하지 않는다.",
+    "Preserve Terminology: glossary에 명시된 스페인어/영어 댄스 고유명사는 다른 언어로 의역하지 않고 원어(알파벳) 그대로 유지한다.",
+    "Role Capitalization: 리더(Leader)와 팔로우(follower) 등 역할 명칭은 대소문자를 구분하여 일관되게 사용한다."
+  ],
+  "glossary": {
+    "롬보넬란테": "Rombo Adelante",
+    "롬뽀 아델란떼": "Rombo Adelante",
+    "볼레로": "Voleo",
+    "볼레롤": "Voleo",
+    "빠세알라": "Paseala",
+    "골빼": "Golpe",
+    "아이솔레이션": "isolation",
+    "클로즈 포지션": "close position",
+    "밴딩": "bend",
+    "프레임": "Frame",
+    "커넥션": "connection",
+    "리더": "Leader",
+    "팔로우": "follower",
+    "견갑골": "shoulder blades",
+    "체스트": "chest"
+  },
+  "excellent_translation_examples": [
+    {
+      "context": "동작 시작 전 도입부 자연스러운 표현",
+      "korean": "먼저 롬보넬란테 한번 해볼게요",
+      "english": "First, I'll try a Rombo Adelante."
+    },
+    {
+      "context": "카운트와 동작을 동시에 설명할 때",
+      "korean": "8에 볼레롤 하면서",
+      "english": "On the 8, while doing a Voleo,"
+    },
+    {
+      "context": "신체 부위를 활용한 정확한 지시",
+      "korean": "견갑골을 내려서",
+      "english": "lower your shoulder blades,"
+    },
+    {
+      "context": "댄스 프레임 관련 전문적인 표현",
+      "korean": "프레임을 잡아 주셔야 돼요",
+      "english": "to maintain the Frame."
+    },
+    {
+      "context": "동작의 마무리를 설명할 때",
+      "korean": "빠세알라로 끝낼 수 있습니다",
+      "english": "You can finish with Paseala."
+    }
+  ]
+}

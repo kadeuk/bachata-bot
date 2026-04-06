@@ -48,11 +48,27 @@ func (tm *TechniqueManager) GetFilteredTerms(content string) string {
 
 	for _, tech := range tm.techniques {
 		// Check if any pronunciation appears in content
+		termFound := false
+		
+		// Check main fields
 		if strings.Contains(contentLower, strings.ToLower(tech.SpanishPronunciation)) ||
 			strings.Contains(contentLower, strings.ToLower(tech.EnglishKoreanPronunciation)) ||
 			strings.Contains(contentLower, strings.ToLower(tech.SpanishName)) ||
 			strings.Contains(contentLower, strings.ToLower(tech.EnglishEquivalent)) {
-			
+			termFound = true
+		}
+		
+		// Check variants if they exist
+		if !termFound && tech.Variants != nil && len(tech.Variants) > 0 {
+			for _, variant := range tech.Variants {
+				if strings.Contains(contentLower, strings.ToLower(variant)) {
+					termFound = true
+					break
+				}
+			}
+		}
+		
+		if termFound {
 			termInfo := fmt.Sprintf("%s(%s) = %s(%s): %s",
 				tech.SpanishPronunciation,
 				tech.SpanishName,
