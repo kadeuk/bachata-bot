@@ -21,18 +21,18 @@
   - Discord Developer Portal에서 발급: https://discord.com/developers/applications
   - 형식 예시: `MTxxxxxxxxxxxxxxxxxx.xxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxx`
 
-#### Secret 2: GEMINI_API_KEY
-- **Name**: `GEMINI_API_KEY`
-- **Value**: Google Gemini API 키
-  - Google AI Studio에서 발급: https://aistudio.google.com/app/apikey
-  - 형식 예시: `AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+#### Secret 2: DEEPSEEK_API_KEY
+- **Name**: `DEEPSEEK_API_KEY`
+- **Value**: DeepSeek API 키
+  - DeepSeek Platform에서 발급: https://platform.deepseek.com/api_keys
+  - 형식 예시: `sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
 
 ### 3. Secret 등록 단계
 1. **New repository secret** 버튼 클릭
 2. **Name** 필드에 Secret 이름 입력 (예: `DISCORD_TOKEN`)
 3. **Secret** 필드에 실제 API 키 값 입력
 4. **Add secret** 버튼 클릭
-5. 위 과정을 `GEMINI_API_KEY`에 대해서도 반복
+5. 위 과정을 `DEEPSEEK_API_KEY`에 대해서도 반복
 
 ## 빌드 프로세스
 
@@ -44,7 +44,7 @@
 ### 빌드 시 API 키 주입
 GitHub Actions는 다음과 같이 빌드합니다:
 ```bash
-go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.GeminiAPIKey=${{ secrets.GEMINI_API_KEY }}" -o bachata-bot
+go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.DeepSeekAPIKey=${{ secrets.DEEPSEEK_API_KEY }}" -o bachata-bot
 ```
 
 이렇게 하면:
@@ -60,7 +60,7 @@ go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.Gem
 2. API 키 입력:
    ```
    DISCORD_TOKEN=your_discord_token_here
-   GEMINI_API_KEY=your_gemini_api_key_here
+   DEEPSEEK_API_KEY=your_deepseek_api_key_here
    ```
 3. 일반적으로 빌드: `go build`
 4. 실행: `./bachata-bot` (또는 Windows: `bachata-bot.exe`)
@@ -81,7 +81,7 @@ go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.Gem
 
 ### 빌드 실패 시
 1. GitHub Secrets가 올바르게 등록되었는지 확인
-2. Secret 이름이 정확한지 확인 (`DISCORD_TOKEN`, `GEMINI_API_KEY`)
+2. Secret 이름이 정확한지 확인 (`DISCORD_TOKEN`, `DEEPSEEK_API_KEY`)
 3. API 키가 유효한지 확인
 
 ### 실행 파일이 API 키를 찾지 못할 때

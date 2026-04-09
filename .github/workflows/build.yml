@@ -18,32 +18,32 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'  # Go 버전 (필요시 수정)
+          go-version: '1.25'  # Go 버전 (go.mod에 1.25.6 지정됨)
 
       - name: Get dependencies
         run: go mod download
 
       - name: Build for Windows (amd64)
         run: |
-          GOOS=windows GOARCH=amd64 go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.GeminiAPIKey=${{ secrets.GEMINI_API_KEY }}" -o bachata-bot-windows-amd64.exe
+          GOOS=windows GOARCH=amd64 go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.DeepSeekAPIKey=${{ secrets.DEEPSEEK_API_KEY }}" -o bachata-bot-windows-amd64.exe
         env:
           CGO_ENABLED: 0
 
       - name: Build for macOS (arm64 - Apple Silicon)
         run: |
-          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.GeminiAPIKey=${{ secrets.GEMINI_API_KEY }}" -o bachata-bot-macos-arm64
+          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.DeepSeekAPIKey=${{ secrets.DEEPSEEK_API_KEY }}" -o bachata-bot-macos-arm64
         env:
           CGO_ENABLED: 0
 
       - name: Build for macOS (amd64 - Intel)
         run: |
-          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.GeminiAPIKey=${{ secrets.GEMINI_API_KEY }}" -o bachata-bot-macos-amd64
+          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.DeepSeekAPIKey=${{ secrets.DEEPSEEK_API_KEY }}" -o bachata-bot-macos-amd64
         env:
           CGO_ENABLED: 0
 
       - name: Build for Linux (amd64)
         run: |
-          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.GeminiAPIKey=${{ secrets.GEMINI_API_KEY }}" -o bachata-bot-linux-amd64
+          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.DiscordToken=${{ secrets.DISCORD_TOKEN }} -X main.DeepSeekAPIKey=${{ secrets.DEEPSEEK_API_KEY }}" -o bachata-bot-linux-amd64
         env:
           CGO_ENABLED: 0
 
